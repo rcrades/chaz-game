@@ -8,13 +8,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { ModsList } from './ModsList'
+import { v4 as uuidv4 } from 'uuid'
+
+declare global {
+  interface Window {
+    webkitAudioContext: typeof AudioContext;
+    SpeechRecognition: typeof SpeechRecognition;
+    webkitSpeechRecognition: typeof SpeechRecognition;
+  }
+}
 
 interface Mod {
   id: string;
   name: string;
   enabled: boolean;
 }
-
 export default function Game() {
   const [isListening, setIsListening] = useState(false)
   const [transcript, setTranscript] = useState('')
@@ -34,10 +42,13 @@ export default function Game() {
   const { messages, input, setInput, handleInputChange, handleSubmit, isLoading, setMessages } = useChat({
     api: '/api/chat',
     initialMessages: [
-      { role: 'assistant', content: "Hey there! I'm your AI host for this awesome party game. Once you enable audio, I'll guide you through the game. Let's have some fun!" }
+      { 
+        id: uuidv4(),
+        role: 'assistant', 
+        content: "Hey there! I'm your AI host for this awesome party game. Once you enable audio, I'll guide you through the game. Let's have some fun!" 
+      }
     ],
   })
-
   const cleanupAudio = useCallback(() => {
     if (audioContextRef.current) {
       audioContextRef.current.close().catch(console.error)
@@ -83,7 +94,6 @@ export default function Game() {
       setAudioError("Speech recognition is not supported in this browser.")
     }
   }, [isListening, setInput])
-
   useEffect(() => {
     if (audioEnabled) {
       initializeSpeechRecognition()
@@ -123,7 +133,6 @@ export default function Game() {
     };
     return scriptProcessor;
   };
-
   const initAudio = async () => {
     try {
       if (!window.AudioContext && !window.webkitAudioContext) {
@@ -163,15 +172,13 @@ export default function Game() {
         echoCancellationNodeRef.current = scriptProcessor
         sourceNode.connect(scriptProcessor).connect(audioContext.destination)
       }
-
       setAudioEnabled(true)
       setAudioError(null)
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error initializing audio:", error)
-      setAudioError(error.message || "An unknown error occurred while initializing audio.")
+      setAudioError(error instanceof Error ? error.message : "An unknown error occurred while initializing audio.")
     }
   }
-
   useEffect(() => {
     if (audioEnabled) {
       const latestMessage = messages[messages.length - 1]
@@ -201,12 +208,12 @@ export default function Game() {
     abortControllerRef.current = new AbortController()
 
     try {
-      await handleSubmit(e, { signal: abortControllerRef.current.signal })
-    } catch (error) {
-      if (error.name === 'AbortError') {
+      await handleSubmit(e)
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'AbortError') {
         console.log('Request was aborted')
       } else {
-        console.error('Error submitting form:', error)
+        console.error('Error submitting form:', error instanceof Error ? error.message : String(error))
       }
     }
   }
@@ -217,10 +224,13 @@ export default function Game() {
     
     setMessages(prevMessages => [
       ...prevMessages,
-      { role: 'system', content: `Mods updated. Enabled mods: ${newEnabledMods.join(', ')}` }
+      { 
+        id: uuidv4(),
+        role: 'system', 
+        content: `Mods updated. Enabled mods: ${newEnabledMods.join(', ')}` 
+      }
     ])
   }
-
   const handleEnableAudio = () => {
     initAudio()
   }
@@ -339,4 +349,3 @@ export default function Game() {
     </Card>
   )
 }
-
