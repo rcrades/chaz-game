@@ -1,5 +1,5 @@
 import type { NextPage } from 'next';
-import Game from '@/components/Game';
+import Game from '../components/Game';
 
 const HomePage: NextPage = () => {
   return (
